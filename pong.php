@@ -10,45 +10,56 @@ ncurses_start_color();
 ncurses_init_pair(1,NCURSES_COLOR_RED,NCURSES_COLOR_BLACK);
 $window = ncurses_newwin($height, $width, 0, 0);
 
-function playerRender($player, $vertical, $move)
-{
-    switch( $move ){
-        case FALSE:
-        break;
-        case NCURSES_KEY_UP:
-        if ($yPos - $step < 0){
-            $yPos=0;
-        }
-        else
-            $yPos-=$step;
-            
-        break;
-        case NCURSES_KEY_DOWN:
-        if ($yPos + $step > $height - ($step)){
-/*
-              ncurses_flash();
-              ncurses_beep();
-*/
-        }
-        else
-            $yPos+=$step;
-        break;
+$player = ['position'=>['x'=>0,'y'=>0],'step'=>4];
+$players= ['client'=>$player,'computer'=>$player];
+$players['computer']['position']['x'] =$width-1;
+$players['computer']['direction']=-1;
+
+function computerPlay(&$player, $vertical){
+    $move = 0;
+    
+    if ($player['direction']==1){
+        $testMovePlayer = playerRender($player, $vertical, NCURSES_KEY_UP);
+        $move = NCURSES_KEY_UP;
+    }else {
+        $testMovePlayer = playerRender($player, $vertical, NCURSES_KEY_DOWN);
+        $move = NCURSES_KEY_DOWN;
     }
-    ncurses_wcolor_set($window, 1);
-    ncurses_mvwaddstr ($window , $lastYPos , 0 , $clearCursor);
-    ncurses_mvwaddstr ($window , $yPos , 0 , $cursor);
-    $lastYPos = $yPos;
-    ncurses_wrefresh($window);    
+    if ($testMovePlayer['position']['y']== $vertical-4||
+        $testMovePlayer['position']['y']== 0)
+        $player['direction'] = $player['direction'] * -1;
+    return $move;
+}
+function playerRender($player, $vertical, $direction)
+{
+    $cursorSize = strlen("#--#");
+    $x = $player['position']['x'];
+    $y = $player['position']['y'];
+    $step = $player['step'];
+    $nextMove = $y;
+    if($direction==NCURSES_KEY_UP){
+        $nextMove -= $step;
+    }
+    else if ($direction == NCURSES_KEY_DOWN){
+        $nextMove += $step;
+    }
+    
+    if($nextMove > $vertical-$cursorSize){
+      $nextMove = $vertical-$cursorSize;
+    } 
+    else if ($nextMove < 0){
+        $nextMove= 0;
+    }   
+    else{
+        $y = $nextMove;
+    }
+    $player['position'] = ['x'=>$x,'y'=>$y];
+    return $player;
 }
 
-$player = ['position'=>['x'=>0,'y'=>$height],'step'=>4];
-$players= ['client'=>$players,'computer'=>$player ];
-$players['computer']['position']['x'] =$width;
 
-$cursor="#\n|\n|\n#";
-$clearCursor = " \n \n \n ";
-$yPos = 1;
-$lastYPos = $yPos;
+$cursor=["#","|","|","#"];
+$clearCursor = [" "," "," "," "];
 $go = true;
 $step = 4;
 $bolinha = [
@@ -56,7 +67,15 @@ $bolinha = [
     'constraint'  => ['x'=>$width, 'y'=>$height], 
     'direction'   => ['x'=>1,'y'=>1]
 ];
-//function colision($bolinha)
+function drawPlayer($position, $cursor, $window)
+{
+    foreach($cursor as $pos => $char){
+        ncurses_mvwaddstr ($window , $position['y']+$pos , $position['x'] , $char);
+    }
+}
+function colision($bolinha, $players){
+    
+}
 function bolinha($window, &$bolinha)
 {
     ncurses_mvwaddstr ($window , 
@@ -88,40 +107,35 @@ function bolinha($window, &$bolinha)
      "#");
 }
 
+$cicle = 11;
 while($go){
     bolinha($window, $bolinha);
-    usleep(50000);//1sec/10=>100000
-    $ch = ncurses_getch();
-    switch( $ch ){
-        case FALSE:
-        break;
-        case NCURSES_KEY_UP:
-        if ($yPos - $step < 0){
-/*
-            ncurses_flash();
-            ncurses_beep();
-*/
-            $yPos=0;
-        }
-        else
-            $yPos-=$step;
-            
-        break;
-        case NCURSES_KEY_DOWN:
-        if ($yPos + $step > $height - ($step)){
-/*
-              ncurses_flash();
-              ncurses_beep();
-*/
-        }
-        else
-            $yPos+=$step;
-        break;
-    }
-    ncurses_wcolor_set($window, 1);
-    ncurses_mvwaddstr ($window , $lastYPos , 0 , $clearCursor);
-    ncurses_mvwaddstr ($window , $yPos , 0 , $cursor);
-    $lastYPos = $yPos;
     ncurses_wrefresh($window);
-} 
+    usleep(50000);//1sec/10=>100000
+    $cicle++;    
+    $move = ncurses_getch();
+    foreach ($players as $name=> $player){
+        $lastPlayerPos = $player['position'];
+        if ($name=='computer'){
+            $move = computerPlay($player, $height);
+            if($cicle < 10){
+                continue;
+            }
+            else{
+                $cicle=0;
+            }
+        }
+        else{
+            if($move<0){
+                continue;
+            }
+        }
+        $player = playerRender($player, $height, $move);
+        $players[$name] = $player;
+        ncurses_wcolor_set($window, 1);
+        drawPlayer($lastPlayerPos, $clearCursor, $window);
+        drawPlayer($player['position'], $cursor, $window);
 
+        ncurses_wrefresh($window);
+    }
+}

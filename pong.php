@@ -106,20 +106,20 @@ function bolinha($window, &$bolinha)
      "#");
 }
 
-$cicle = 11;
+$cicle = 100;
+$rate = 50;
 while($go){
-    if ($cicle % 7 == 0)
+    if ($cicle % $rate == 0)
         bolinha($window, $bolinha);
     ncurses_wrefresh($window);
-    usleep(10000);//1sec/10=>100000
-    $cicle++;    
+    usleep(1000);//1000000
+    $cicle++;
     $move = ncurses_getch();
     foreach ($players as $name=> $player){
         $lastPlayerPos = $player['position'];
         if ($name=='computer'){
             $move = computerPlay($player, $height, $cursor);
-            $move= 0;
-            if($cicle < 10){
+            if($cicle < $rate){
                 continue;
             }
             else{

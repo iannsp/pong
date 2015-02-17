@@ -112,17 +112,16 @@ while($go){
     if ($cicle % $rate == 0)
         bolinha($window, $bolinha);
     ncurses_wrefresh($window);
-    usleep(1000);//1000000
+    usleep(1000);
     $cicle++;
     $move = ncurses_getch();
     foreach ($players as $name=> $player){
         $lastPlayerPos = $player['position'];
         if ($name=='computer'){
-            $move = computerPlay($player, $height, $cursor);
-            if($cicle < $rate){
+            if ($cicle % 135 != 0)
                 continue;
-            }
-            else{
+            $move = computerPlay($player, $height, $cursor);
+            if($cicle > $rate *3 ){
                 $cicle=0;
             }
         }

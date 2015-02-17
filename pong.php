@@ -3,7 +3,7 @@ $width  = (int) shell_exec("tput cols");
 $height = (int) shell_exec("tput lines");
 ncurses_init();
 ncurses_timeout(0); 
-//ncurses_curs_set(0);
+ncurses_curs_set(0);
 //ncurses_curs_set(2);
 ncurses_cbreak();
 ncurses_start_color();
@@ -15,24 +15,25 @@ $players= ['client'=>$player,'computer'=>$player];
 $players['computer']['position']['x'] =$width-1;
 $players['computer']['direction']=-1;
 
-function computerPlay(&$player, $vertical){
+function computerPlay(&$player, $vertical,$cursor){
     $move = 0;
-    
+    $step = $player['step'];
     if ($player['direction']==1){
-        $testMovePlayer = playerRender($player, $vertical, NCURSES_KEY_UP);
+        $testMovePlayer = playerRender($player, $vertical, NCURSES_KEY_UP, $cursor);
         $move = NCURSES_KEY_UP;
     }else {
-        $testMovePlayer = playerRender($player, $vertical, NCURSES_KEY_DOWN);
+        $testMovePlayer = playerRender($player, $vertical, NCURSES_KEY_DOWN, $cursor);
         $move = NCURSES_KEY_DOWN;
     }
-    if ($testMovePlayer['position']['y']== $vertical-4||
+    if ($testMovePlayer['position']['y']== $vertical-count($cursor)||
         $testMovePlayer['position']['y']== 0)
         $player['direction'] = $player['direction'] * -1;
     return $move;
 }
-function playerRender($player, $vertical, $direction)
+
+function playerRender($player, $vertical, $direction, $cursor)
 {
-    $cursorSize = strlen("#--#");
+    $cursorSize = count($cursor);
     $x = $player['position']['x'];
     $y = $player['position']['y'];
     $step = $player['step'];
@@ -44,24 +45,22 @@ function playerRender($player, $vertical, $direction)
         $nextMove += $step;
     }
     
-    if($nextMove > $vertical-$cursorSize){
+    if($nextMove >= $vertical-$cursorSize){
       $nextMove = $vertical-$cursorSize;
-    } 
+    }
     else if ($nextMove < 0){
         $nextMove= 0;
     }   
-    else{
-        $y = $nextMove;
-    }
+    $y = $nextMove;
+
     $player['position'] = ['x'=>$x,'y'=>$y];
     return $player;
 }
 
 
-$cursor=["#","|","|","#"];
-$clearCursor = [" "," "," "," "];
+$cursor=["#","|","|","|","#"];
+$clearCursor = [" "," "," "," "," "];
 $go = true;
-$step = 4;
 $bolinha = [
     'position'    => ['x'=>$width/2, 'y'=>$height/2], 
     'constraint'  => ['x'=>$width, 'y'=>$height], 
@@ -109,15 +108,17 @@ function bolinha($window, &$bolinha)
 
 $cicle = 11;
 while($go){
-    bolinha($window, $bolinha);
+    if ($cicle % 7 == 0)
+        bolinha($window, $bolinha);
     ncurses_wrefresh($window);
-    usleep(50000);//1sec/10=>100000
+    usleep(10000);//1sec/10=>100000
     $cicle++;    
     $move = ncurses_getch();
     foreach ($players as $name=> $player){
         $lastPlayerPos = $player['position'];
         if ($name=='computer'){
-            $move = computerPlay($player, $height);
+            $move = computerPlay($player, $height, $cursor);
+            $move= 0;
             if($cicle < 10){
                 continue;
             }
@@ -130,7 +131,7 @@ while($go){
                 continue;
             }
         }
-        $player = playerRender($player, $height, $move);
+        $player = playerRender($player, $height, $move, $cursor);
         $players[$name] = $player;
         ncurses_wcolor_set($window, 1);
         drawPlayer($lastPlayerPos, $clearCursor, $window);

@@ -10,7 +10,7 @@ ncurses_start_color();
 ncurses_init_pair(1,NCURSES_COLOR_RED,NCURSES_COLOR_BLACK);
 $window = ncurses_newwin($height, $width, 0, 0);
 
-$player = ['position'=>['x'=>0,'y'=>0],'step'=>4];
+$player = ['position'=>['x'=>0,'y'=>0],'step'=>4,'score'=>0];
 $players= ['client'=>$player,'computer'=>$player];
 $players['computer']['position']['x'] =$width-1;
 $players['computer']['direction']=-1;
@@ -25,8 +25,8 @@ function computerPlay(&$player, $vertical,$cursor){
         $testMovePlayer = playerRender($player, $vertical, NCURSES_KEY_DOWN, $cursor);
         $move = NCURSES_KEY_DOWN;
     }
-    if ($testMovePlayer['position']['y']== $vertical-count($cursor)||
-        $testMovePlayer['position']['y']== 0)
+    if ($testMovePlayer['position']['y']>= $vertical-count($cursor)||
+        $testMovePlayer['position']['y']<= 0)
         $player['direction'] = $player['direction'] * -1;
     return $move;
 }
@@ -72,8 +72,40 @@ function drawPlayer($position, $cursor, $window)
         ncurses_mvwaddstr ($window , $position['y']+$pos , $position['x'] , $char);
     }
 }
-function colision($bolinha, $players){
-    
+function colision($bolinha, $cursor){
+    global $window;
+    global $height;
+    global $width;
+    global $players;
+    $score = false;
+    $bX = $bolinha['position']['x'];
+    $bY = $bolinha['position']['y'];
+    $client = $players['client'];
+    $computer = $players['computer'];
+    $cursorSize = count($cursor);
+    if ($bX== $client['position']['x']+1 && 
+        ($bY < $client['position']['y'] ||
+        $bY > $client['position']['y'] +$cursorSize   
+            )
+    ){
+            $players['computer']['score']++;
+            $score= true;
+
+    }else if ($bX== $computer['position']['x'] &&
+        ($bY < $computer['position']['y'] ||
+        $bY > $computer['position']['y'] +$cursorSize   
+            )
+        ){
+            
+            $players['client']['score']++;
+            $score= true;
+        }
+
+        ncurses_mvwaddstr ($window , $height-2 , $width/2 - 15 , "Usuário: {$players['client']['score']} / Computador: {$players['computer']['score']}");
+
+        ncurses_mvwaddstr ($window , $height-3 , $width/2 - 25 , "cursor:{$bX}:{$bY}=> Usuário:{$players['client']['position']['x']}: {$players['client']['position']['y']} / Computador: {$players['computer']['position']['x']}:{$players['computer']['position']['y']}");
+
+    return $score;
 }
 function bolinha($window, &$bolinha)
 {
@@ -135,7 +167,9 @@ while($go){
         ncurses_wcolor_set($window, 1);
         drawPlayer($lastPlayerPos, $clearCursor, $window);
         drawPlayer($player['position'], $cursor, $window);
-
+        if (colision($bolinha, $cursor)){
+            ncurses_flash ();
+        }
         ncurses_wrefresh($window);
     }
 }
